@@ -1,5 +1,5 @@
 # =============================================================================
-# main_window.py — Vista principal BroChaperonAI en Flet
+# main_window.py — Vista principal RossaliniChat en Flet
 # =============================================================================
 
 import base64
@@ -62,7 +62,7 @@ MODES_ROW2: list[str] = ["rompehielo", "modo_amigos"]
 
 
 class MainWindow:
-    """Vista principal de BroChaperonAI adaptada a Flet con diseño moderno."""
+    """Vista principal de RossaliniChat adaptada a Flet con diseño moderno."""
 
     def __init__(self, page: ft.Page) -> None:
         self.page = page
@@ -106,7 +106,7 @@ class MainWindow:
             self.page.update()
 
         self.page.dialog = ft.AlertDialog(
-            title=ft.Text("BroChaperonAI", color=TXT_MAIN),
+            title=ft.Text("RossaliniChat", color=TXT_MAIN),
             content=ft.Text(msg, color=TXT_MAIN),
             actions=[
                 ft.TextButton(
@@ -168,7 +168,7 @@ class MainWindow:
 
     def build_ui(self) -> None:
         """Configura y crea la estructura visual de Flet."""
-        self.page.title = "BroChaperonAI"
+        self.page.title = "RossaliniChat"
         self.page.bgcolor = BG_ROOT
 
         # Aplicar tamaño inicial
@@ -275,7 +275,7 @@ class MainWindow:
                             controls=[
                                 self.status_text,
                                 ft.Text(
-                                    "BroChaperonAI · Equipo Alejabot · v2.0",
+                                    "RossaliniChat · Equipo Alejabot · v2.0",
                                     size=8,
                                     color=TXT_DIM,
                                 ),

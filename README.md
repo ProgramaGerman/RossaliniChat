@@ -1,4 +1,4 @@
-# 💬 BroChaperonAI
+# 💬 RossaliniChat
 
 > _Tu copiloto de conversaciones. Analiza capturas de pantalla de chats y genera respuestas perfectas para cada situación._
 
@@ -10,7 +10,7 @@
 
 ## ¿Qué es?
 
-**BroChaperonAI** es una herramienta de escritorio que usa **inteligencia artificial multimodal** para leer capturas de pantalla de conversaciones y sugerirte la respuesta ideal. Solo sube la imagen, elige tu estilo y copia la respuesta generada.
+**RossaliniChat** es una herramienta de escritorio que usa **inteligencia artificial multimodal** para leer capturas de pantalla de conversaciones y sugerirte la respuesta ideal. Solo sube la imagen, elige tu estilo y copia la respuesta generada.
 
 Sin rodeos. Sin pensar demasiado. Solo resultados.
 
@@ -60,7 +60,7 @@ Sin rodeos. Sin pensar demasiado. Solo resultados.
 El proyecto sigue el patrón **Modelo-Vista-Presentador (MVP)**:
 
 ```
-BroChaperonAI/
+RossaliniChat/
 ├── app/
 │   ├── models/
 │   │   ├── ai_engine.py        ← 6 arquetipos de IA · OpenRouter
@@ -82,8 +82,8 @@ BroChaperonAI/
 
 ```powershell
 # Clonar el repositorio
-git clone https://github.com/ProgramaGerman/BroChaperonAI.git
-cd BroChaperonAI/BroChaperonAI
+git clone https://github.com/ProgramaGerman/RossaliniChat.git
+cd RossaliniChat/RossaliniChat
 
 # Instalar dependencias
 uv add flet httpx Pillow python-dotenv

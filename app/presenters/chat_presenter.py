@@ -27,6 +27,7 @@ class ChatPresenter:
         self._responses: dict[str, str] = {}
         self._generating: bool = False
         self._active_mode: str | None = None
+        self._conversation_json: dict | None = None  # JSON extraído de la imagen
 
     # --- on_load (7) -------------------------------------------------------
     def on_load(self, path: str) -> None:
@@ -38,6 +39,7 @@ class ChatPresenter:
             self.view.show_preview(thumbnail)
             self.view.set_status("✅ Imagen cargada. Elige un modo de respuesta.")
             self._responses.clear()
+            self._conversation_json = None  # Resetear cache JSON
             self._generating = False
             self._active_mode = None
             self.view.clear_all_modes_status()
@@ -59,28 +61,44 @@ class ChatPresenter:
             self.view.set_status(f"✅ Respuesta '{mode}' (precargada)")
             return
 
-        # Si es la primera vez, lanzar TODOS los modos en paralelo
+        # Si es la primera vez: extraer JSON primero, luego generar
         if not self._generating:
             self._generating = True
             self.view.set_loading(True)
-            self.view.set_status(f"⏳ Generando todas las respuestas…")
-            for m in list(ARCHEYPES.keys()):
-                if m not in self._responses:
-                    self.view.mark_mode_loading(m)
-                    threading.Thread(
-                        target=self._run_generation,
-                        args=(m,),
-                        daemon=True,
-                    ).start()
+            self.view.set_status("⏳ Analizando conversación…")
+            threading.Thread(
+                target=self._run_extraction,
+                daemon=True,
+            ).start()
         else:
             self.view.set_status(f"⏳ Generando '{mode}'…")
+
+    # --- _run_extraction (16) ----------------------------------------------
+    def _run_extraction(self) -> None:
+        """Fase 1: extrae el JSON de la conversación y luego lanza todos los modos."""
+        try:
+            image_for_api = self.processor.resize(self._image)
+            self._conversation_json = self.engine.extract_conversation(image_for_api)
+        except Exception:  # noqa: BLE001
+            self._conversation_json = None
+
+        # Fase 2: lanzar todos los modos en paralelo
+        self.view.set_status("⏳ Generando todas las respuestas…")
+        for m in list(ARCHEYPES.keys()):
+            if m not in self._responses:
+                self.view.mark_mode_loading(m)
+                threading.Thread(
+                    target=self._run_generation,
+                    args=(m,),
+                    daemon=True,
+                ).start()
 
     # --- _run_generation (15) ----------------------------------------------
     def _run_generation(self, mode: str) -> None:
         """Ejecuta la llamada a la IA en un hilo secundario y actualiza la Vista."""
         try:
             image_for_api = self.processor.resize(self._image)
-            response = self.engine.ask(image_for_api, mode)
+            response = self.engine.ask(image_for_api, mode, self._conversation_json)
             self._on_success(response, mode)
         except Exception as exc:  # noqa: BLE001
             err_msg = str(exc)

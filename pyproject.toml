@@ -1,5 +1,5 @@
 [project]
-name = "brochaperonai"
+name = "rossalinichat"
 version = "0.1.0"
 description = "Asistente de chat con IA que sugiere respuestas según arquetipos de interacción."
 readme = "README.md"
