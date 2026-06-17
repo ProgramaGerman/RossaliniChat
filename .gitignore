@@ -35,3 +35,5 @@ tests/_tmp_*
 # Equipo Alejabot (interno — no forma parte de la app)
 .antigravity/
 team_manager.py
+
+mcp.json

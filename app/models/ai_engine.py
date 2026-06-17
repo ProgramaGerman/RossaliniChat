@@ -20,7 +20,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 
 API_URL: Final[str] = "https://openrouter.ai/api/v1/chat/completions"
-MODEL: Final[str]   = "qwen/qwen3-vl-30b-a3b-thinking"
+MODEL: Final[str] = "nvidia/nemotron-nano-12b-v2-vl:free"
 
 # Arquetipos ordenados alfabéticamente; valores = prompt de sistema
 ARCHEYPES: Final[dict[str, str]] = {
@@ -70,19 +70,19 @@ ARCHEYPES: Final[dict[str, str]] = {
 # Clase AIEngine
 # ---------------------------------------------------------------------------
 
+
 class AIEngine:
     """Gestiona las llamadas multimodales a la API de OpenRouter."""
 
     # Atributos ordenados por longitud ascendente: key(3) · model(5) · api_url(7)
     def __init__(self) -> None:
-        self.key: str     = os.environ.get("OPENROUTER_API_KEY", "")
-        self.model: str   = MODEL
+        self.key: str = os.environ.get("OPENROUTER_API_KEY", "")
+        self.model: str = MODEL
         self.api_url: str = API_URL
 
         if not self.key:
             raise EnvironmentError(
-                "OPENROUTER_API_KEY no encontrada. "
-                "Crea un archivo .env con tu clave."
+                "OPENROUTER_API_KEY no encontrada. Crea un archivo .env con tu clave."
             )
 
     # --- ask (3) -----------------------------------------------------------
@@ -90,10 +90,9 @@ class AIEngine:
         """Envía la imagen y el modo al modelo; devuelve la respuesta en texto."""
         if mode not in ARCHEYPES:
             raise ValueError(
-                f"Modo '{mode}' no válido. "
-                f"Opciones: {list(ARCHEYPES.keys())}"
+                f"Modo '{mode}' no válido. Opciones: {list(ARCHEYPES.keys())}"
             )
-        payload  = self._build_payload(image, mode)
+        payload = self._build_payload(image, mode)
         response = self._send(payload)
         return response
 
@@ -109,9 +108,9 @@ class AIEngine:
         """Realiza la petición HTTP y extrae el texto de la respuesta."""
         headers = {
             "Authorization": f"Bearer {self.key}",
-            "Content-Type":  "application/json",
-            "HTTP-Referer":  "https://github.com/BroChaperonAI",
-            "X-Title":       "BroChaperonAI",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/BroChaperonAI",
+            "X-Title": "BroChaperonAI",
         }
         with httpx.Client(timeout=60.0) as client:
             resp = client.post(self.api_url, json=payload, headers=headers)
@@ -125,7 +124,7 @@ class AIEngine:
         b64 = self._encode(image)
         return {
             "model": self.model,
-            "max_tokens": 300,
+            "max_tokens": 500,
             "messages": [
                 {
                     "role": "system",

@@ -5,7 +5,7 @@ description = "Asistente de chat con IA que sugiere respuestas según arquetipos
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "customtkinter>=5.2.2",
+    "flet>=0.85.3",
     "httpx>=0.27.0",
     "pillow>=10.3.0",
     "python-dotenv>=1.0.1",
