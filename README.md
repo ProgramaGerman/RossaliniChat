@@ -1,8 +1,8 @@
-# 💬 RossaliniChat
+# RossaliniChat API
 
-> _Tu copiloto de conversaciones. Analiza capturas de pantalla de chats y genera respuestas perfectas para cada situación._
+> _Backend API para generar respuestas de chat con IA según 6 arquetipos de interacción._
 
-![Version](https://img.shields.io/badge/version-2.1.0-7C3AED?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.2.0-7C3AED?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.13+-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
@@ -10,70 +10,92 @@
 
 ## ¿Qué es?
 
-**RossaliniChat** es una herramienta de escritorio que usa **inteligencia artificial multimodal** para leer capturas de pantalla de conversaciones y sugerirte la respuesta ideal. Solo sube la imagen, elige tu estilo y copia la respuesta generada.
-
-Sin rodeos. Sin pensar demasiado. Solo resultados.
+**RossaliniChat API** es un backend REST que usa **inteligencia artificial multimodal** (OpenRouter + Nvidia Nemotron VL) para analizar capturas de pantalla de conversaciones y generar respuestas en 6 modos distintos. Diseñado como backend para una futura web app.
 
 ---
 
-## Novedades v2.0.0
+## Endpoints
 
-- 🧊 **Nuevo modo Rompehielo** — Genera mensajes creativos para iniciar conversaciones desde cero
-- 👥 **Nuevo modo Amigos** — Respuestas de humor, bromas y lenguaje informal entre amigos
-- 🖥️ **Panel de resoluciones** — Cambia el tamaño de ventana en tiempo real (HD / HD+ / Full HD)
-- 🎨 **UI rediseñada** — Layout de 2 columnas, secciones etiquetadas y texto más visible
-- ✅ **Suite de tests ampliada** — 11 pruebas unitarias (4 nuevas)
+### `POST /api/analyze`
+Analiza una captura de pantalla y genera respuestas en los 6 modos.
+
+- **Content-Type:** `multipart/form-data`
+- **Body:** `image` (archivo PNG/JPG)
+- **Response:**
+```json
+{
+  "modes": {
+    "provocativo": "...",
+    "enamorar": "...",
+    "salvada_epica": "...",
+    "coquetear": "...",
+    "rompehielo": "...",
+    "modo_amigos": "..."
+  },
+  "conversation": { "...": "..." },
+  "context": null
+}
+```
+
+### `POST /api/analyze/text`
+Genera respuestas a partir de un contexto textual (sin imagen).
+
+- **Content-Type:** `application/json`
+- **Body:** `{ "context": "texto de la conversación..." }`
+- **Response:** `{ modes: {...}, context: "...", conversation: null }`
+
+### `GET /api/modes`
+Lista los modos de respuesta disponibles.
+
+### `GET /health`
+Health check.
 
 ---
 
 ## Modos de Respuesta
 
-### 💜 Modo Romántico
-| Modo                 | Descripción                                    |
-| -------------------- | ---------------------------------------------- |
-| 🔥 **Provocativo**   | Alta tensión emocional y picardía calculada    |
-| 💕 **Enamorar**      | Respuestas profundas, románticas y vulnerables |
-| ⚡ **Salvada Épica** | Salidas ingeniosas para situaciones incómodas  |
-| 😏 **Coquetear**     | Tono lúdico, ligero y con humor sutil          |
-
-### 🤝 Modo Social
-| Modo              | Descripción                                           |
-| ----------------- | ----------------------------------------------------- |
-| 🧊 **Rompehielo** | Mensajes de apertura originales para conocer a alguien |
-| 👥 **Amigos**     | Humor absurdo, bromas y lenguaje informal entre amigos |
+| Modo | Icono | Descripción |
+|------|-------|-------------|
+| Provocativo | 🔥 | Alta tensión emocional y picardía calculada |
+| Enamorar | 💕 | Respuestas profundas, románticas y vulnerables |
+| Salvada Épica | ⚡ | Salidas ingeniosas para situaciones incómodas |
+| Coquetear | 😏 | Tono lúdico, ligero y con humor sutil |
+| Rompehielo | 🧊 | Mensajes de apertura originales |
+| Modo Amigos | 👥 | Humor absurdo e informal entre amigos |
 
 ---
 
 ## Tecnologías
 
 - **Python 3.13+** — tipado estático avanzado
-- **Flet** — interfaz moderna multiplataforma con modo oscuro nativo
+- **FastAPI** — framework REST async
 - **OpenRouter API** — modelos de visión multimodal (Nvidia Nemotron VL)
 - **Pillow** — procesamiento de imágenes
-- **httpx** — cliente HTTP asíncrono
-- **python-dotenv** — gestión segura de credenciales
+- **httpx** — cliente HTTP
+- **Uvicorn** — servidor ASGI
 
 ---
 
 ## Arquitectura
 
-El proyecto sigue el patrón **Modelo-Vista-Presentador (MVP)**:
-
 ```
-RossaliniChat/
+RossalinChat/
 ├── app/
+│   ├── api/
+│   │   ├── routes.py       ← Endpoints REST
+│   │   └── schemas.py      ← Pydantic models
+│   ├── core/
+│   │   └── config.py       ← Settings (OPENROUTER_API_KEY)
 │   ├── models/
-│   │   ├── ai_engine.py        ← 6 arquetipos de IA · OpenRouter
-│   │   └── image_processor.py  ← Carga, resize y thumbnail de imágenes
-│   ├── presenters/
-│   │   └── chat_presenter.py   ← Orquesta Vista ↔ Modelos en hilos
-│   └── views/
-│       └── main_window.py      ← UI dark mode · 2 columnas · Panel config
+│   │   ├── ai_engine.py    ← 6 arquetipos de IA · OpenRouter
+│   │   └── image_processor.py
+│   ├── services/
+│   │   └── chat_service.py ← Lógica de negocio
+│   └── main.py             ← Entrypoint FastAPI
 ├── tests/
-│   └── test_suite.py           ← 11 pruebas unitarias (unittest)
-├── main.py
-├── requirements.txt
-└── pyproject.toml
+│   └── test_suite.py       ← 36 pruebas unitarias (unittest)
+├── pyproject.toml
+└── requirements.txt
 ```
 
 ---
@@ -81,29 +103,15 @@ RossaliniChat/
 ## Instalación
 
 ```powershell
-# Clonar el repositorio
 git clone https://github.com/ProgramaGerman/RossaliniChat.git
-cd RossaliniChat/RossaliniChat
+cd RossaliniChat
 
-# Instalar dependencias
-uv add flet httpx Pillow python-dotenv
+uv sync
 
-# Configurar API key (crear archivo .env)
 echo OPENROUTER_API_KEY=sk-or-xxxxxxxxxx > .env
 
-# Ejecutar
-uv run py main.py
+uv run uvicorn app.main:app --reload
 ```
-
----
-
-## Uso
-
-1. **Abre la app** → ventana en modo oscuro con layout de 2 paneles.
-2. **Selecciona la resolución** en el panel derecho (HD / HD+ / Full HD).
-3. **Haz clic en 📷 CARGAR PANTALLAZO** → selecciona tu captura de chat.
-4. **Elige un modo** (🔥 💕 ⚡ 😏 🧊 👥) → la IA analiza y genera la respuesta.
-5. **Copia** con 📋 COPIAR RESPUESTA y pégala donde quieras.
 
 ---
 
@@ -111,31 +119,31 @@ uv run py main.py
 
 ```powershell
 uv run python -m unittest tests/test_suite.py -v
-# Ran 11 tests in ~0.2s — OK
+# Ran 36 tests — OK
+```
+
+---
+
+## Docker
+
+```powershell
+docker build -t rossalinichat-api .
+docker run -p 8000:8000 --env-file .env rossalinichat-api
 ```
 
 ---
 
 ## Changelog
 
-### v2.1.0 — 2026-06-17
-- 🛠️ **Migración a Flet** — UI multiplataforma, adiós a CustomTkinter
-- 🆓 **Nuevo modelo IA** — Nvidia Nemotron VL 12B (gratuito, reemplaza a Qwen VL)
-- 🐛 **Fix FilePicker** — Corrección del selector de archivos (agregado a page.overlay)
-- 🔄 **max_tokens aumentado** — De 300 a 500 para respuestas más completas
-- 🧹 **Limpieza** — Eliminado `.env` duplicado en `app/`
-
-### v2.0.0 — 2026-03-15
-- ✨ Nuevos modos: Rompehielo y Modo Amigos
-- 🖥️ Panel lateral de resoluciones (1280×720 · 1366×768 · 1920×1080 · 1600×900)
-- 🎨 Rediseño UI: layout 2 columnas, secciones etiquetadas, texto más visible
-- ✅ Suite de tests ampliada a 11 pruebas
-
-### v1.0.0 — 2026-03-01
-- 🚀 Lanzamiento inicial con 4 modos: Provocativo, Enamorar, Salvada Épica, Coquetear
+### v0.2.0 — 2026-06-27
+- Migración de desktop app a backend API REST
+- FastAPI con CORS para futura integración web
+- Endpoints: `/api/analyze`, `/api/analyze/text`, `/api/modes`, `/health`
+- Los 6 modos se generan en paralelo con `ThreadPoolExecutor`
+- 36 tests, todos pasando
 
 ---
 
 ## Licencia
 
-Proyecto personal. Todos los derechos MIT © 2026 German Gonzalez.
+MIT © 2026 German Gonzalez.

@@ -1,6 +1,5 @@
 # =============================================================================
-# test_suite.py — Pruebas unitarias para AIEngine e ImageProcessor
-# [Revisor - Equipo Alejabot] Añadidos: TestNewModes (rompehielo + modo_amigos)
+# test_suite.py — Pruebas unitarias para RossaliniChat API
 # Ejecutar: python -m pytest tests/test_suite.py -v
 #       o:  python -m unittest tests/test_suite.py -v
 # =============================================================================
@@ -10,7 +9,7 @@ import json
 import os
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 from PIL import Image
 
@@ -360,6 +359,218 @@ class TestAIEngineIntegration(unittest.TestCase):
 
                 response = engine.ask(img, "coquetear", extracted)
                 self.assertEqual(response, "Claro, suena bien!")
+
+
+# ===========================================================================
+# TestAskText — Pruebas para ask_text() y _build_text_payload()
+# ===========================================================================
+
+
+class TestAskText(unittest.TestCase):
+    """Pruebas para el método ask_text (solo texto, sin imagen)."""
+
+    def _get_engine(self):
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
+            from importlib import reload
+            import app.models.ai_engine as eng_mod
+
+            reload(eng_mod)
+            return eng_mod.AIEngine()
+
+    def test_ask_text_invalid_mode(self) -> None:
+        """ask_text debe lanzar ValueError con modo inválido."""
+        engine = self._get_engine()
+        with self.assertRaises(ValueError):
+            engine.ask_text("modo_inexistente")
+
+    def test_text_payload_structure(self) -> None:
+        """El payload de texto debe tener las claves esperadas."""
+        engine = self._get_engine()
+        payload = engine._build_text_payload("coquetear")
+        self.assertIn("model", payload)
+        self.assertIn("messages", payload)
+        self.assertIn("max_tokens", payload)
+        self.assertIn("temperature", payload)
+        self.assertIn("top_p", payload)
+        self.assertEqual(len(payload["messages"]), 2)
+        self.assertEqual(payload["messages"][0]["role"], "system")
+        self.assertEqual(payload["messages"][1]["role"], "user")
+        self.assertIsInstance(payload["messages"][1]["content"], str)
+
+    def test_text_payload_no_image_content(self) -> None:
+        """El payload de texto NO debe contener image_url."""
+        engine = self._get_engine()
+        payload = engine._build_text_payload("provocativo")
+        user_msg = payload["messages"][1]
+        self.assertIsInstance(user_msg["content"], str)
+        self.assertNotIn("image_url", str(payload["messages"]))
+
+    def test_text_payload_with_json(self) -> None:
+        """El payload de texto debe inyectar el JSON en el prompt."""
+        engine = self._get_engine()
+        sample_json = {"app": "Telegram", "ultimo_mensaje": "Jaja"}
+        payload = engine._build_text_payload("coquetear", sample_json)
+        sys_msg = payload["messages"][0]["content"]
+        self.assertIn("Telegram", sys_msg)
+        self.assertNotIn("{conversacion_json}", sys_msg)
+
+    def test_text_payload_all_modes(self) -> None:
+        """Todos los modos deben generar payloads de texto válidos."""
+        engine = self._get_engine()
+        sample_json = {"app": "Test"}
+        for mode in (
+            "coquetear",
+            "enamorar",
+            "modo_amigos",
+            "provocativo",
+            "rompehielo",
+            "salvada_epica",
+        ):
+            payload = engine._build_text_payload(mode, sample_json)
+            self.assertIn("model", payload)
+            self.assertEqual(len(payload["messages"]), 2)
+
+
+# ===========================================================================
+# TestChatService
+# ===========================================================================
+
+
+class TestChatService(unittest.TestCase):
+    """Pruebas unitarias para ChatService."""
+
+    def setUp(self) -> None:
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
+            from importlib import reload
+            import app.models.ai_engine as eng_mod
+
+            reload(eng_mod)
+            from app.services.chat_service import ChatService
+
+            self.service = ChatService()
+
+    def test_get_modes_returns_six(self) -> None:
+        """get_modes debe devolver exactamente 6 modos."""
+        modes = self.service.get_modes()
+        self.assertEqual(len(modes), 6)
+        for m in modes:
+            self.assertIn("key", m)
+            self.assertIn("icon", m)
+            self.assertIn("label", m)
+            self.assertIn("description", m)
+
+    def test_get_modes_keys(self) -> None:
+        """Los keys de get_modes deben coincidir con ARCHEYPES."""
+        modes = self.service.get_modes()
+        keys = {m["key"] for m in modes}
+        from app.models.ai_engine import ARCHEYPES
+
+        self.assertEqual(keys, set(ARCHEYPES.keys()))
+
+    def test_analyze_text_returns_modes(self) -> None:
+        """analyze_text debe devolver respuestas para los 6 modos."""
+        with patch.object(
+            self.service.engine, "_send", return_value="Respuesta de prueba"
+        ):
+            result = self.service.analyze_text("Hola, ¿cómo estás?")
+            self.assertEqual(len(result), 6)
+            for mode in (
+                "coquetear",
+                "enamorar",
+                "modo_amigos",
+                "provocativo",
+                "rompehielo",
+                "salvada_epica",
+            ):
+                self.assertIn(mode, result)
+                self.assertEqual(result[mode], "Respuesta de prueba")
+
+    def test_analyze_text_with_error(self) -> None:
+        """analyze_text debe capturar errores y devolver mensaje de error."""
+        with patch.object(
+            self.service.engine, "ask_text", side_effect=Exception("API Error")
+        ):
+            result = self.service.analyze_text("test")
+            for mode, response in result.items():
+                self.assertIn("Error", response)
+
+    def test_analyze_image_calls_extract(self) -> None:
+        """analyze_image debe llamar a extract_conversation y devolver ambos resultados."""
+        image_bytes = io.BytesIO()
+        Image.new("RGB", (100, 100)).save(image_bytes, format="JPEG")
+        image_bytes.seek(0)
+
+        with patch.object(self.service.engine, "_send", return_value="Respuesta"):
+            with patch.object(
+                self.service.engine,
+                "extract_conversation",
+                return_value={"app": "Test"},
+            ):
+                modes, conversation = self.service.analyze_image(image_bytes.read())
+                self.assertEqual(conversation, {"app": "Test"})
+                self.assertEqual(len(modes), 6)
+                for mode, resp in modes.items():
+                    self.assertEqual(resp, "Respuesta")
+
+    def test_analyze_image_invalid_bytes(self) -> None:
+        """analyze_image debe fallar con bytes de imagen inválidos."""
+        with self.assertRaises(Exception):
+            self.service.analyze_image(b"not an image")
+
+
+# ===========================================================================
+# TestAPIEndpoints
+# ===========================================================================
+
+
+class TestAPIEndpoints(unittest.TestCase):
+    """Pruebas de integración para los endpoints FastAPI."""
+
+    def setUp(self) -> None:
+        from fastapi.testclient import TestClient
+
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
+            from importlib import reload
+            import app.models.ai_engine as eng_mod
+
+            reload(eng_mod)
+            import app.services.chat_service as svc_mod
+
+            reload(svc_mod)
+            import app.api.routes as routes_mod
+
+            reload(routes_mod)
+            from app.main import app
+
+            self.client = TestClient(app)
+
+    def test_health(self) -> None:
+        """GET /health debe retornar 200."""
+        resp = self.client.get("/health")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"status": "ok"})
+
+    def test_get_modes(self) -> None:
+        """GET /api/modes debe retornar 6 modos."""
+        resp = self.client.get("/api/modes")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 6)
+        self.assertIn("key", data[0])
+        self.assertIn("icon", data[0])
+        self.assertIn("label", data[0])
+        self.assertIn("description", data[0])
+
+    def test_analyze_text_endpoint(self) -> None:
+        """POST /api/analyze/text debe retornar modes."""
+        with patch("app.services.chat_service.AIEngine._send", return_value="Ok"):
+            resp = self.client.post("/api/analyze/text", json={"context": "Hola"})
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            self.assertIn("modes", data)
+            self.assertEqual(len(data["modes"]), 6)
+            self.assertEqual(data["context"], "Hola")
+            self.assertIsNone(data["conversation"])
 
 
 if __name__ == "__main__":

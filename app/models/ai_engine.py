@@ -52,12 +52,12 @@ EXTRACTION_MAX_TOKENS: Final[int] = 1000
 
 # Parámetros por modo: temperature, max_tokens, top_p
 MODE_PARAMS: Final[dict[str, dict[str, Any]]] = {
-    "coquetear": {"temperature": 0.8, "max_tokens": 400, "top_p": 0.9},
-    "enamorar": {"temperature": 0.5, "max_tokens": 500, "top_p": 0.85},
-    "modo_amigos": {"temperature": 0.9, "max_tokens": 450, "top_p": 0.95},
-    "provocativo": {"temperature": 0.85, "max_tokens": 400, "top_p": 0.9},
-    "rompehielo": {"temperature": 0.8, "max_tokens": 450, "top_p": 0.9},
-    "salvada_epica": {"temperature": 0.7, "max_tokens": 500, "top_p": 0.85},
+    "coquetear": {"temperature": 0.8, "max_tokens": 300, "top_p": 0.9},
+    "enamorar": {"temperature": 0.5, "max_tokens": 350, "top_p": 0.85},
+    "modo_amigos": {"temperature": 0.9, "max_tokens": 300, "top_p": 0.95},
+    "provocativo": {"temperature": 0.85, "max_tokens": 300, "top_p": 0.9},
+    "rompehielo": {"temperature": 0.8, "max_tokens": 300, "top_p": 0.9},
+    "salvada_epica": {"temperature": 0.7, "max_tokens": 350, "top_p": 0.85},
 }
 
 # Arquetipos ordenados alfabéticamente; valores = prompt de sistema
@@ -208,6 +208,17 @@ class AIEngine:
         response = self._send(payload)
         return response
 
+    # --- ask_text (8) --------------------------------------------------------
+    def ask_text(self, mode: str, conversation_json: dict | None = None) -> str:
+        """Envía solo texto (sin imagen) al modelo; devuelve la respuesta."""
+        if mode not in ARCHEYPES:
+            raise ValueError(
+                f"Modo '{mode}' no válido. Opciones: {list(ARCHEYPES.keys())}"
+            )
+        payload = self._build_text_payload(mode, conversation_json)
+        response = self._send(payload)
+        return response
+
     # --- extract_conversation (18) -----------------------------------------
     def extract_conversation(self, image: Image.Image) -> dict:
         """Extrae la conversación de la imagen como JSON estructurado."""
@@ -284,11 +295,16 @@ class AIEngine:
             "HTTP-Referer": "https://github.com/RossaliniChat",
             "X-Title": "RossaliniChat",
         }
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(timeout=30.0) as client:
             resp = client.post(self.api_url, json=payload, headers=headers)
             resp.raise_for_status()
         data = resp.json()
-        return data["choices"][0]["message"]["content"].strip()
+        try:
+            return data["choices"][0]["message"]["content"].strip()
+        except (KeyError, IndexError, TypeError):
+            raise RuntimeError(
+                f"Respuesta inesperada de la API: {json.dumps(data, ensure_ascii=False)[:300]}"
+            )
 
     # --- _build_payload (13) -----------------------------------------------
     def _build_payload(
@@ -332,6 +348,38 @@ class AIEngine:
                             ),
                         },
                     ],
+                },
+            ],
+        }
+
+    # --- _build_text_payload (18) -------------------------------------------
+    def _build_text_payload(
+        self, mode: str, conversation_json: dict | None = None
+    ) -> dict:
+        """Construye payload solo con texto (sin imagen)."""
+        params = MODE_PARAMS[mode]
+        prompt = ARCHEYPES[mode]
+        if conversation_json:
+            json_str = json.dumps(conversation_json, indent=2, ensure_ascii=False)
+            prompt = prompt.replace("{conversacion_json}", json_str)
+        else:
+            prompt = prompt.replace("{conversacion_json}", "(No disponible)")
+
+        return {
+            "model": self.model,
+            "max_tokens": params["max_tokens"],
+            "temperature": params["temperature"],
+            "top_p": params["top_p"],
+            "messages": [
+                {
+                    "role": "system",
+                    "content": prompt,
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "Analiza la conversación y genera la respuesta solicitada."
+                    ),
                 },
             ],
         }
