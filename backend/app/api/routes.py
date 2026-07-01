@@ -1,0 +1,41 @@
+import logging
+
+from fastapi import APIRouter, UploadFile, File, HTTPException
+
+from app.api.schemas import AnalyzeTextRequest, AnalyzeResponse, ModeInfo
+from app.services.chat_service import ChatService
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+service = ChatService()
+
+
+@router.get("/modes", response_model=list[ModeInfo])
+def get_modes():
+    return service.get_modes()
+
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+def analyze_image(file: UploadFile = File(...)):
+    try:
+        image_bytes = file.file.read()
+        modes, conversation = service.analyze_image(image_bytes)
+        return AnalyzeResponse(modes=modes, conversation=conversation)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error analyzing image")
+        raise HTTPException(status_code=502, detail=f"Error al analizar la imagen: {e}")
+
+
+@router.post("/analyze/text", response_model=AnalyzeResponse)
+def analyze_text(req: AnalyzeTextRequest):
+    try:
+        modes = service.analyze_text(req.context)
+        return AnalyzeResponse(modes=modes, context=req.context)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error analyzing text")
+        raise HTTPException(status_code=502, detail=f"Error al analizar el texto: {e}")

@@ -37,3 +37,17 @@ tests/_tmp_*
 team_manager.py
 
 mcp.json
+
+# Node.js / pnpm
+node_modules/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+backend/backend.log
+
+# Windows reserved filenames
+nul
+NUL
+Nul
